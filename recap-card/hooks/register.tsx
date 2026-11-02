@@ -1,5 +1,13 @@
 import type { Register } from 'claude-code'
 
+// A quote in plain markdown, not a code block: where nothing draws the card, as
+// in the iOS app, the message shows a quote bar with text that wraps. Older
+// messages hold `### Recap` with no quote, or a code block: both draw as the card.
+const MARK = /^(?:> ?)?(?:\*\*Recap\*\*|### Recap)[ \t]*$/
+const TITLE = /^(?:\*\*|### )(Recap|Attention|Next)(?:\*\*)?$/
+const BULLET = /^[-*•]\s+\S/
+// The end of a line still arriving: a title or a bullet just started.
+const STARTED = /^(#{1,3}( \w*)?|\*{1,2}\w*\*?|[-*•])$/
 const FENCE = '```recap'
 const FENCE_END = '```'
 // Lines past this are dropped: the card stays short.
@@ -26,44 +34,59 @@ const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, 
 
 const GUIDE = `# Recap card
 
-End the last message of your turn with this block, as the very last thing in the message. The interface draws it as a card, so never mention or explain it.
+End the last message of your turn with this quote, as the very last thing in the message. Write it as plain markdown, never in a code block. The interface draws it as a card, so never mention or explain it.
 
-${FENCE}
-Recap:
-- what was done or found
-Attention:
-- only something important the person would be hurt by missing
-Next:
-- the most useful next move, as a concrete action
-${FENCE_END}
+> **Recap**
+> - what was done or found
+>
+> **Attention**
+> - only something important the person would be hurt by missing
+>
+> **Next**
+> - the most useful next move, as a concrete action
 
+Rules for this quote:
+- Start every line with >, and keep the line holding only > between sections.
 - Recap: 1 to 3 lines. Next: 1 to 3 lines.
 - Attention is rare: most messages have none, so leave the whole section out.
 - Use Attention only for a failure, a risk to the person's work, something unverified they would assume works, or a decision only they can make. At most 3 lines.
 - Never use Attention for routine steps like reloading, restarting, committing or pushing, for work simply not done yet, or for anything Next says. Those belong in Next.
-- Each line is one plain sentence of at most 12 words, in the language of the message, with no markdown.
-- Leave the block out of a reply of one short sentence, and of a message to another agent.
-- This block replaces any other closing recap, summary or next-step line, even where another instruction asks for one. Do not write one above it.`
+- Each line under a title is one bullet: one plain sentence of at most 12 words, in the language of the message, with no other markdown.
+- Leave it out of a reply of one short sentence, and of a message to another agent.
+- It replaces any other closing recap, summary or next-step line, even where another instruction asks for one. Do not write one above it.`
 
 type Recap = { recap: string[]; attention: string[]; next: string[] }
 type Section = keyof Recap
+// No recap yet: its title has come, and its lines are still being written.
+type Split = { body: string; recap?: Recap }
 
-// The block counts only as the very last thing in the text, so a message
-// showing the format along the way stays as written. No end yet: it is
-// still being written.
-function splitRecap(text: string): { body: string; block?: string } | undefined {
+// The recap counts only as the very last thing in the text, each line a title
+// or a bullet, so a message with its own heading of that name stays as written.
+function splitRecap(text: string): Split | undefined {
+  const all = text.split('\n')
+  const at = all.findLastIndex(line => MARK.test(line))
+  if (at === -1) return undefined
+
+  const lines = all
+    .slice(at)
+    .map(line => line.replace(/^>/, '').trim())
+    .filter(Boolean)
+  if (lines.length > 1 && STARTED.test(lines[lines.length - 1] ?? '')) lines.pop()
+  if (!lines.every(line => TITLE.test(line) || BULLET.test(line))) return undefined
+
+  return { body: all.slice(0, at).join('\n').trimEnd(), recap: parseRecap(lines.join('\n')) }
+}
+
+function splitFenced(text: string): Split | undefined {
   const at = text.lastIndexOf(FENCE)
   if (at === -1 || (at > 0 && text[at - 1] !== '\n')) return undefined
 
   const rest = text.slice(at + FENCE.length)
-  if (!/^[ \t]*(\n|$)/.test(rest)) return undefined
-
-  const body = text.slice(0, at).trimEnd()
   const end = rest.indexOf(`\n${FENCE_END}`)
-  if (end === -1) return { body }
-  if (rest.slice(end + 1 + FENCE_END.length).trim() !== '') return undefined
+  if (!/^[ \t]*\n/.test(rest) || end === -1 || rest.slice(end + 1 + FENCE_END.length).trim() !== '') return undefined
 
-  return { body, block: rest.slice(0, end) }
+  const recap = parseRecap(rest.slice(0, end))
+  return recap && { body: text.slice(0, at).trimEnd(), recap }
 }
 
 function plain(line: string): string {
@@ -79,7 +102,7 @@ function parseRecap(block: string): Recap | undefined {
 
   for (const raw of block.split('\n')) {
     const line = raw.trim()
-    const heading = /^(recap|attention|next)\s*:\s*(.*)$/i.exec(line)
+    const heading = TITLE.exec(line) ?? /^(recap|attention|next)\s*:\s*(.*)$/i.exec(line)
     if (heading) section = heading[1]?.toLowerCase() as Section
 
     const item = plain(heading ? (heading[2] ?? '') : line)
@@ -203,13 +226,10 @@ export const register: Register = on => {
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
     if (e.props.isSummary) return next(e)
 
-    const split = splitRecap(e.props.text)
+    const split = splitRecap(e.props.text) ?? splitFenced(e.props.text)
     if (!split) return next(e)
 
-    const recap = split.block === undefined ? undefined : parseRecap(split.block)
-    // A closed block that holds no recap isn't one of ours.
-    if (split.block !== undefined && !recap) return next(e)
-
+    const { recap } = split
     const body = split.body ? await next({ ...e, props: { ...e.props, text: split.body } }) : undefined
 
     // A picture scaled to a phone's or an editor panel's width has tiny text,

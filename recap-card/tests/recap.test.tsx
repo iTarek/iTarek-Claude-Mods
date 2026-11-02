@@ -13,7 +13,7 @@ function message(text: string) {
 }
 
 function block(lines: string[]): string {
-  return [`${FENCE}recap`, ...lines, FENCE].join('\n')
+  return lines.map(line => (line ? `> ${line}` : '>')).join('\n')
 }
 
 // Nothing sits beneath the plugin: this hook stands for the engine's own row.
@@ -25,7 +25,7 @@ function drawsTheReply(on: On) {
   })
 }
 
-const FULL = block(['Recap:', '- Fixed the login crash.', 'Attention:', '- Not tried on a device.', 'Next:', '- Try it, then commit.'])
+const FULL = block(['**Recap**', '- Fixed the login crash.', '', '**Attention**', '- Not tried on a device.', '', '**Next**', '- Try it, then commit.'])
 
 test('a recap at the end of a message draws as a gradient card under the reply', async ($, on) => {
   drawsTheReply(on)
@@ -33,7 +33,7 @@ test('a recap at the end of a message draws as a gradient card under the reply',
   const ui = await $.ui.mount({ ...message(`The crash is gone.\n\n${FULL}`), surface: 'desktop' })
 
   expect((await ui.find({ type: 'Text', text: /crash is gone/ }))?.text).toBe('The crash is gone.')
-  expect(await ui.find({ type: 'Text', text: /recap/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /Recap\*\*/ })).toBeUndefined()
 
   const card = await ui.find({ type: 'Svg' })
   expect(card?.props.alt).toBe('Recap: Fixed the login crash. Attention: Not tried on a device. Next: Try it, then commit.')
@@ -80,8 +80,8 @@ test('Attention is left out when nothing needs attention', async ($, on) => {
   drawsTheReply(on)
 
   for (const lines of [
-    ['Recap:', '- Renamed the app.', 'Next:', '- Commit it.'],
-    ['Recap:', '- Renamed the app.', 'Attention:', '- None.', 'Next:', '- Commit it.'],
+    ['**Recap**', '- Renamed the app.', '', '**Next**', '- Commit it.'],
+    ['**Recap**', '- Renamed the app.', '', '**Attention**', '- None.', '', '**Next**', '- Commit it.'],
   ]) {
     const ui = await $.ui.mount({ ...message(block(lines)), surface: 'desktop' })
 
@@ -95,25 +95,30 @@ test('Attention is left out when nothing needs attention', async ($, on) => {
 test('a section keeps its first three lines', async ($, on) => {
   drawsTheReply(on)
 
-  const ui = await $.ui.mount({ ...message(block(['Recap:', '- one', '- two', '- three', '- four'])), surface: 'desktop' })
+  const ui = await $.ui.mount({ ...message(block(['**Recap**', '- one', '- two', '- three', '- four'])), surface: 'desktop' })
 
   expect((await ui.find({ type: 'Svg' }))?.props.alt).toBe('Recap: one two three')
   await ui.unmount()
 })
 
-test('a block still being written is hidden until it closes', async ($, on) => {
+test('a recap still arriving draws what has come, never its half-typed lines', async ($, on) => {
   drawsTheReply(on)
 
-  const ui = await $.ui.mount({ ...message(`Done.\n\n${FENCE}recap\nRecap:\n- Fixed`), surface: 'desktop' })
+  const waiting = await $.ui.mount({ ...message('Done.\n\n> **Recap**'), surface: 'desktop' })
+  expect((await waiting.find({ type: 'Text', text: /^Done/ }))?.text).toBe('Done.')
+  expect(await waiting.find({ type: 'Svg' })).toBeUndefined()
+  expect(await waiting.find({ type: 'Text', text: /Writing recap/ })).toBeDefined()
+  await waiting.unmount()
 
-  expect((await ui.find({ type: 'Text', text: /^Done/ }))?.text).toBe('Done.')
-  expect(await ui.find({ type: 'Text', text: /Fixed/ })).toBeUndefined()
-  expect(await ui.find({ type: 'Svg' })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: /Writing recap/ })).toBeDefined()
-  await ui.unmount()
+  for (const end of ['>', '> -', '> *', '> **Ne', '> **Next*']) {
+    const ui = await $.ui.mount({ ...message(`Done.\n\n> **Recap**\n> - Fixed it\n>\n${end}`), surface: 'desktop' })
+
+    expect((await ui.find({ type: 'Svg' }))?.props.alt).toBe('Recap: Fixed it')
+    await ui.unmount()
+  }
 })
 
-test('a block in the middle of a message stays as written', async ($, on) => {
+test('a recap in the middle of a message stays as written', async ($, on) => {
   drawsTheReply(on)
   const text = `Here is the format:\n\n${FULL}\n\nThat is all.`
 
@@ -124,11 +129,44 @@ test('a block in the middle of a message stays as written', async ($, on) => {
   await ui.unmount()
 })
 
+test('a title of that name over other text stays as written', async ($, on) => {
+  drawsTheReply(on)
+
+  for (const text of ['> **Recap**\n> We shipped it last week.', '> **Recap of the week**\n> - Shipped it.']) {
+    const ui = await $.ui.mount({ ...message(text), surface: 'desktop' })
+
+    expect(await ui.find({ type: 'Svg' })).toBeUndefined()
+    expect((await ui.find({ type: 'Text', text: /Recap/ }))?.text).toBe(text)
+    await ui.unmount()
+  }
+})
+
+test('what older messages hold still draws as the card', async ($, on) => {
+  drawsTheReply(on)
+  const fenced = [`${FENCE}recap`, 'Recap:', '- Fixed it.', 'Next:', '- Commit it.', FENCE].join('\n')
+
+  for (const older of [fenced, '### Recap\n- Fixed it.\n\n### Next\n- Commit it.']) {
+    const ui = await $.ui.mount({ ...message(`Done.\n\n${older}`), surface: 'desktop' })
+
+    expect((await ui.find({ type: 'Text', text: /^Done/ }))?.text).toBe('Done.')
+    expect((await ui.find({ type: 'Svg' }))?.props.alt).toBe('Recap: Fixed it. Next: Commit it.')
+    await ui.unmount()
+  }
+
+  // A code block that holds no recap, or has text after it, isn't one.
+  for (const text of [`${FENCE}recap\nnone\n${FENCE}`, `${fenced}\n\nThat is all.`]) {
+    const asWritten = await $.ui.mount({ ...message(text), surface: 'desktop' })
+
+    expect(await asWritten.find({ type: 'Svg' })).toBeUndefined()
+    await asWritten.unmount()
+  }
+})
+
 test('text from the model cannot become markup in the card', async ($, on) => {
   drawsTheReply(on)
 
   const ui = await $.ui.mount({
-    ...message(block(['Recap:', '- <script>alert("x")</script> & more'])),
+    ...message(block(['**Recap**', '- <script>alert("x")</script> & more'])),
     surface: 'desktop',
   })
   const source = String((await ui.find({ type: 'Svg' }))?.props.source)
@@ -142,7 +180,7 @@ test('a long line wraps across rows of the card', async ($, on) => {
   drawsTheReply(on)
   const long = 'word '.repeat(40).trim()
 
-  const ui = await $.ui.mount({ ...message(block(['Recap:', `- ${long}`])), surface: 'desktop' })
+  const ui = await $.ui.mount({ ...message(block(['**Recap**', `- ${long}`])), surface: 'desktop' })
   const source = String((await ui.find({ type: 'Svg' }))?.props.source)
   const rows = [...source.matchAll(/fill="#12263F">([^<]*)<\/text>/g)].map(row => row[1] ?? '')
 
@@ -152,14 +190,15 @@ test('a long line wraps across rows of the card', async ($, on) => {
   await ui.unmount()
 })
 
-test('each prompt asks for the block, where something can draw it', async ($, on) => {
+test('each prompt asks for the recap as a plain quote, where something can draw it', async ($, on) => {
   let surfaces: 'desktop'[] = ['desktop']
   on('session.surfaces', () => ({ value: surfaces }))
   on('classic.UserPromptSubmit', () => ({ additionalContext: ['from another hook'] }))
 
   const drawn = await $.classic.UserPromptSubmit({ prompt: 'Fix the login' })
   expect(drawn.additionalContext?.[0]).toBe('from another hook')
-  expect(drawn.additionalContext?.[1]).toContain(`${FENCE}recap`)
+  expect(drawn.additionalContext?.[1]).toContain('> **Recap**')
+  expect(drawn.additionalContext?.[1]).not.toContain(FENCE)
   expect(drawn.additionalContext?.[1]).toContain('Attention is rare')
 
   surfaces = []

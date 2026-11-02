@@ -82,10 +82,11 @@ Claude ends its messages with a card, so you never lose track:
 
 Some things to know:
 
-- **How it works:** the mod sends Claude a short instruction with each prompt, asking it to end its message with a small block. It then draws that block as the card.
+- **How it works:** the mod sends Claude a short instruction with each prompt, asking it to end its message with a short quote of titles and bullets. It then draws that quote as the card.
 - **No extra calls:** Claude writes the recap as part of its own message, and the mod contacts no other service.
-- **Drawn as an image:** on the desktop app the card is a picture that fills the chat's width, so its text can't be selected. Terminals, phones and VS Code draw a rounded box with the same titles in real text.
-- **If you remove the mod:** older messages show the block as plain text.
+- **Drawn as an image:** on the desktop app the card is a picture that fills the chat's width, so its text can't be selected. Terminals and VS Code draw a rounded box with the same titles in real text.
+- **On the iOS app:** there is no card. The recap shows as a quote with a bar on its left, with the text wrapped.
+- **If you remove the mod:** recaps in older messages stay as plain text.
 
 Built and tested on Claude Code 2.1.309, on a Mac.
 
