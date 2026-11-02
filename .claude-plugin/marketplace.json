@@ -1,0 +1,12 @@
+{
+  "name": "iTarek-Claude-Mods",
+  "owner": { "name": "Tarek Mansour" },
+  "metadata": { "description": "Small mods for Claude Code by Tarek Mansour" },
+  "plugins": [
+    {
+      "name": "prompt-history",
+      "description": "Side panel of this session's prompts: what you asked, what Claude did, how long it took and when it finished",
+      "source": "./prompt-history"
+    }
+  ]
+}

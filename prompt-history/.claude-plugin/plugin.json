@@ -1,0 +1,10 @@
+{
+  "name": "prompt-history",
+  "version": "0.6.0",
+  "description": "Side panel of this session's prompts: what you asked, what Claude did, how long it took and when it finished",
+  "author": { "name": "Tarek Mansour", "url": "https://github.com/iTarek" },
+  "homepage": "https://github.com/iTarek/iTarek-Claude-Mods",
+  "repository": "https://github.com/iTarek/iTarek-Claude-Mods",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
