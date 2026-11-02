@@ -12,6 +12,11 @@
       "name": "recap-card",
       "description": "Ends Claude's messages with a rounded gradient card: Recap, Attention and Next",
       "source": "./recap-card"
+    },
+    {
+      "name": "todo",
+      "description": "Side panel of your project's ToDo.md: each item in its own box, with a button that sets the prompt to work on it",
+      "source": "./todo"
     }
   ]
 }

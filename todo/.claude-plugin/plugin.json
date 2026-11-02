@@ -1,0 +1,10 @@
+{
+  "name": "todo",
+  "version": "0.1.0",
+  "description": "Side panel of your project's ToDo.md: each item in its own box, with a button that sets the prompt to work on it",
+  "author": { "name": "Tarek Mansour", "url": "https://github.com/iTarek" },
+  "homepage": "https://github.com/iTarek/iTarek-Claude-Mods",
+  "repository": "https://github.com/iTarek/iTarek-Claude-Mods",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}

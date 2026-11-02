@@ -8,6 +8,7 @@ An independent project, not made by or affiliated with Anthropic.
 |---|---|
 | [prompt-history](#prompt-history) | A side panel of your session's prompts: what you asked, what Claude did, how long it took and when it finished |
 | [recap-card](#recap-card) | Ends Claude's messages with a rounded gradient card: Recap, Attention and Next |
+| [todo](#todo) | A side panel of your project's `ToDo.md`: each item in its own box, with a button that sets the prompt to work on it |
 
 ## Install
 
@@ -87,6 +88,33 @@ Some things to know:
 - **Drawn as an image:** on the desktop app the card is a picture that fills the chat's width, so its text can't be selected. Terminals and VS Code draw a rounded box with the same titles in real text.
 - **On the iOS app:** there is no card. The recap shows as a quote with a bar on its left, with the text wrapped.
 - **If you remove the mod:** recaps in older messages stay as plain text.
+
+Built and tested on Claude Code 2.1.309, on a Mac.
+
+## todo
+
+Shows your project's `ToDo.md` in a side panel, each item in its own box:
+
+```
+╭─────────────────────────────────────────────────────────╮
+│ ○ Add a search icon                                     │
+│   It opens the finder.                                  │
+│                                                         │
+│ [ Let's work on this ] [ Explain this ] [ Remove this ] │
+╰─────────────────────────────────────────────────────────╯
+```
+
+- **Done or not:** an open item has an empty circle, and a done one a circle with a check mark.
+- **Let's work on this:** puts the item in your prompt box, after anything you've already typed. Press Enter to send it. Done items don't have this button.
+- **Explain this:** works the same way, with a prompt asking Claude to explain the item in plain words without changing anything.
+- **Remove this:** also works the same way, with a prompt asking Claude to remove the item from the file. Nothing changes until you press Enter.
+- **No file yet:** the panel says so, with a button that asks Claude to create one right away.
+- **Which file:** `ToDo.md` in the session's folder, with any capitals (`TODO.md`, `todo.md`).
+- **What counts as an item:** a top-level `- [ ]` or `- [x]` checkbox. A file with no checkboxes lists its top-level bullets. Indented checkboxes show as steps inside their item's box.
+- **Stays up to date:** it checks the folder every 3 seconds and reads the file only when it changed.
+- **Closing it:** it stays closed for that session until you type `/todo`.
+
+The mod makes no model calls of its own. Only the create button sends Claude a prompt, as part of your session.
 
 Built and tested on Claude Code 2.1.309, on a Mac.
 
