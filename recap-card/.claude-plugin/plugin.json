@@ -1,0 +1,9 @@
+{
+  "name": "recap-card",
+  "version": "0.1.0",
+  "description": "Ends Claude's messages with a rounded gradient card: Recap, Attention and Next",
+  "author": { "name": "Tarek Mansour", "url": "https://github.com/iTarek" },
+  "homepage": "https://github.com/iTarek/iTarek-Claude-Mods",
+  "repository": "https://github.com/iTarek/iTarek-Claude-Mods",
+  "license": "MIT"
+}

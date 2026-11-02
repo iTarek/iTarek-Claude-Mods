@@ -7,8 +7,11 @@ An independent project, not made by or affiliated with Anthropic.
 | Mod | What it does |
 |---|---|
 | [prompt-history](#prompt-history) | A side panel of your session's prompts: what you asked, what Claude did, how long it took and when it finished |
+| [recap-card](#recap-card) | Ends Claude's messages with a rounded gradient card: Recap, Attention and Next |
 
 ## Install
+
+These examples install `prompt-history`. For another mod, use its name instead.
 
 At the prompt of a terminal session:
 
@@ -68,6 +71,23 @@ The panel opens by itself. If you close it, it stays closed for that session unt
 ### Requirements
 
 Built and tested on Claude Code 2.1.309, on a Mac. Older versions may not support mods.
+
+## recap-card
+
+Claude ends its messages with a card, so you never lose track:
+
+- **Recap:** up to 3 lines on what was done or found.
+- **Attention:** only for something important, like a failure or a risk to your work. It stands out on its own colored panel, and most messages don't have it.
+- **Next:** up to 3 lines on the most useful next move.
+
+Some things to know:
+
+- **How it works:** the mod sends Claude a short instruction with each prompt, asking it to end its message with a small block. It then draws that block as the card.
+- **No extra calls:** Claude writes the recap as part of its own message, and the mod contacts no other service.
+- **Drawn as an image:** on the desktop app the card is a picture that fills the chat's width, so its text can't be selected. Terminals, phones and VS Code draw a rounded box with the same titles in real text.
+- **If you remove the mod:** older messages show the block as plain text.
+
+Built and tested on Claude Code 2.1.309, on a Mac.
 
 ## Developing
 

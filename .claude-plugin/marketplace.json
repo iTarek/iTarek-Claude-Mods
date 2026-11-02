@@ -7,6 +7,11 @@
       "name": "prompt-history",
       "description": "Side panel of this session's prompts: what you asked, what Claude did, how long it took and when it finished",
       "source": "./prompt-history"
+    },
+    {
+      "name": "recap-card",
+      "description": "Ends Claude's messages with a rounded gradient card: Recap, Attention and Next",
+      "source": "./recap-card"
     }
   ]
 }
